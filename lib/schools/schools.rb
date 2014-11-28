@@ -1,25 +1,25 @@
 require "nokogiri"
-require "http"
+require 'open-uri'
+require "socket"
 
 class Schools
 
   attr_accessor :type
   attr_accessor :max_page_num
   
-  Type = { "elementary"=>"mainxx", "middle"=>"maincz", "high"=>"main" }
+  Type = { elementary:"mainxx", middle:"maincz", high:"main" }
 
-  def initialize( type )
-    @type = Type[ type ]
+  def initialize( school_type )
+    @type = school_type 
     # get max page num
-    url ="http://xuexiao.eol.cn/iframe/#{Type[@type]}.php?page=1"
+    url ="http://xuexiao.eol.cn/iframe/#{Type[school_type]}.php?page=1"
     html = request( url ) 
     html.force_encoding('utf-8')
     page = Nokogiri::HTML( html )
     @max_page_num = page.search("center").text[-8..-1].match('\d{2,}').to_s.to_i
-    return
   end
 
-  def request
+  def request( url )
     """
     Sent HTTP request to baidu and grab the respond html.
     """
@@ -40,7 +40,6 @@ class Schools
 
     html = ""
     while line = socket.gets
-      p line
       html += line
       # automatically end
       break if html.include?('</HTML>') || html.include?('</html>')
@@ -50,14 +49,15 @@ class Schools
     return html
   end
 
-  def urls_in_page( page_i , type = @type )
+  def urls_in_page( page_i )
     url ="http://xuexiao.eol.cn/iframe/#{Type[@type]}.php?page=#{page_i}"
     html = request( url ) 
     page = Nokogiri::HTML( html )
 
     urls = []
     ( page.search('h1') + page.search('h5') ).each do |heading|
-      urls << heading.search('a').attribute('href').value
+      # why nokogiti will erase ''index.shtml here
+      urls << heading.search('a').attribute('href').value + 'index.shtml'
     end
 
     return urls
@@ -84,6 +84,7 @@ class Schools
       end
     end
 
+    school[:type] = @type
     return school
   end
 
